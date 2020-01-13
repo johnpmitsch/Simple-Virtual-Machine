@@ -1,5 +1,13 @@
 # A program to model a CPU and memory as a virtual machine. The programs are loaded as bytes in "memory", which is an array the the class initalizes with
 #
+# Memory is used with the following format:
+# The instructions occupy the first 14 bytes, followed by 2 bytes for output and 4 bytes for two separate 2 byte inputs:
+#
+# 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19
+# __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __
+# INSTRUCTIONS ---------------------------^ OUT-^ IN-1^ IN-2^
+#
+#
 # The instruction set is as follows:
 # load_word   0x01
 # store_word  0x02
@@ -7,7 +15,7 @@
 # sub         0x04
 # halt        0xff
 #
-# Which does the following
+# Which, while taking arguements, does the following
 #
 # load_word  reg (addr)  # Load value at given address into register
 # store_word reg (addr)  # Store the value in register at the given address
