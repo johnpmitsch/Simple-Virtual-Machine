@@ -1,5 +1,0 @@
-[tool.black]
-exclude = '''
- | programs.py
-)
-'''

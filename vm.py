@@ -22,13 +22,18 @@
 # add reg1 reg2          # Set reg1 = reg1 + reg2
 # sub reg1 reg2          # Set reg1 = reg1 - reg2
 # halt
-#
+
+from itertools import repeat
+from struct import pack, unpack
+from collections import namedtuple
 
 
 class VirtualMachine:
-    def __init__(self, memory):
-        self.memory = memory
+    def __init__(self):
+        self.memory = [None] * 100
         self.internal_memory = [0x00, 0x00, 0x00]
+        self.programs = {}
+        self.memory_offset = 0
 
     def program_counter(self):
         return self.internal_memory[0]
@@ -94,6 +99,55 @@ class VirtualMachine:
             self.subtract()
         elif instruction == 0xFF:
             next()
+
+    def load_program(self, exec_file):
+        program_bytes = self.open_program(exec_file)
+        segment_headers = []
+        full_program_length = 0
+        # The first byte is how many segments we have in the executable
+        program_bytes, segment_count = self.pop_bytes(program_bytes, 1)
+        # Get the segment header info and store it
+        for i in repeat(None, segment_count[0]):
+            program_bytes, segment_header = self.pop_bytes(program_bytes, 3)
+            segment_header_data = self.get_segment_headers(segment_header)
+            segment_headers.append(segment_header_data)
+        # Use the segment header data to load programs into memory
+        for header in segment_headers:
+            start = header.location
+            end = header.location + header.length
+            program = program_bytes[start:end]
+            full_program_length += len(program)
+            # The first bit of the first byte is:
+            # 0 for text segments (code)
+            # 1 for data segments (input data)
+            type = header.type_and_target >> 7
+            # The location is the last 7 bits of the first header byte
+            target_address = header.type_and_target & 0b01111111
+            self.load_into_memory(program, target_address + self.memory_offset)
+        self.memory_offset += full_program_length + 1
+
+    def open_program(self, exec_file):
+        with open(exec_file, "rb") as binaryfile:
+            bytes = bytearray(binaryfile.read())
+            return bytes
+
+    def get_segment_headers(self, segment_header):
+        SegmentHeader = namedtuple("SegmentHeader", "type_and_target length location")
+        print(segment_header)
+        segment_header_data = SegmentHeader._make(unpack("BBB", segment_header))
+        return segment_header_data
+
+    def pop_bytes(self, bytes, end):
+        popped = bytes[0:end]
+        del bytes[0:end]
+        return bytes, popped
+
+    def load_into_memory(self, program, location):
+        self.memory = (
+            self.memory[:location]
+            + list(program)
+            + self.memory[location + len(program) :]
+        )
 
     def run(self):
         while self.program_counter() < len(self.instructions()):
